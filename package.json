@@ -1,0 +1,24 @@
+{
+  "name": "gapi-firebase-auth",
+  "version": "0.0.1",
+  "description": "A module for integrating GAPI and Firebase into your Angular projects",
+  "main": "coreAuth.service.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RideLikeTheWind/gapi-firebase-auth.git"
+  },
+  "keywords": [
+    "GAPI",
+    "Firebase",
+    "AngularJS"
+  ],
+  "author": "Jonathon Mascorella",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/RideLikeTheWind/gapi-firebase-auth/issues"
+  },
+  "homepage": "https://github.com/RideLikeTheWind/gapi-firebase-auth#readme"
+}
