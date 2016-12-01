@@ -37,10 +37,8 @@ angular.module('myApp', ['ngRoute', 'firebase', 'gapi-firebase-auth'])
 ```javascript
 	
 	.run(['coreAuthService', function(coreAuthService) {
-		
-		coreAuthService.setDiscoveryDocuments(
-			{drive:'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest',
-			gmail: 'https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest'});
+		//Array of discovery documents
+		coreAuthService.setDiscoveryDocuments(['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest', 'https://www.googleapis.com/discovery/v1/apis/gmail/v1/rest']);
 			
 			//You can add other discovery documents using the discovery service: https://developers.google.com/discovery/v1/reference/apis/list#try-it
 
@@ -50,13 +48,8 @@ angular.module('myApp', ['ngRoute', 'firebase', 'gapi-firebase-auth'])
 		//Set your scopes - the basic Auth ones are already set for you in coreAuthService
 		coreAuthService.setScopes('https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/gmail.readonly');
 		
-		//Run the main initialiser and load GAPI clients
-		coreAuthService.initiateGapi().then(function() {
-			
-			//You can add more here from the docs
-			gapi.client.load('calendar', 'v3');
-			gapi.client.load('gmail', 'v1');
-		});
+		//Run the main initialiser - Clients load automatically
+		coreAuthService.initiateGapi();
 	}]);
 	
 ```

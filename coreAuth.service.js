@@ -1,17 +1,18 @@
 (function() {
-		angular.module('google-firebase-auth', []).service('coreAuthService', ['$window', '$q', '$rootScope', function($window, $q, $rootScope) {
+		angular.module('myApp').service('coreAuthService', ['$window', '$q', '$rootScope', function($window, $q, $rootScope) {
 	
 		function loadGapi() {
 	        var deferred = $q.defer();
 	        $window.handleClientLoad = function(){
-	            deferred.resolve();
+	            gapi.load('client:auth2', deferred.resolve());
 	        }
 			return deferred.promise;
 		}
 	
 		return {
+			clientsToLoad: [],
 			documentApis: [],
-			discoveryDocuments: {},
+			discoveryDocuments: [],
 			apiKey: '',
 			clientId: '',
 			scopes: 'profile email', //minimum scope
@@ -33,62 +34,110 @@
 				return true;
 			},
 			
+			//Loaders 
 			
-			//Gapi loaders
-			observeGapiLoad: function() {
-				var deferred = $q.defer();
-				loadGapi().then(function() {
-					return deferred.resolve(true);
-				});
-				return deferred.promise;
-			},
 			loadGapiApis: function() {
 				
+				var authSrv = this;
 				var promises = [];
 				
 				var loadDiscoveryDocument = function(documentUrl) {
 					var deferred = $q.defer();
+					
 					var data = '';
+					
+					if(!documentUrl) {
+						return deferred.resolve();
+					}
+					
 					var fetchDiscoveryDocument = fetch(documentUrl).then(
-					            function(resp){
-					          	  	return resp.json();
-					       	 	}).then(function(json) {
-					          		data = json;
+				            function(resp){
+								if(!resp.ok){
+									return false;
+								}
+				          	  	return resp.json();
+				       	 	}).then(function(json) {
+								if(json){
+									data = json;
+									authSrv.clientsToLoad.push({client:json.name, version:json.version});
 									return deferred.resolve(data);
-								});
-							return deferred.promise;
-						}
+								}
+								console.log('Unable to load document '+documentUrl);
+				          		return deferred.resolve();
+							
+							});
+						return deferred.promise;
+					}
 				
 				if(this.discoveryDocuments){
-					angular.forEach(this.discoveryDocuments, function(value, key){
-						console.log('Loading: '+key,value);
+					angular.forEach(this.discoveryDocuments, function(value){
+						console.log('Loading '+value);
 						promises.push(loadDiscoveryDocument(value));
 					});
+					loadDiscoveryDocument();
+				}
+				return $q.all(promises);
+			},
+			clientLoader: function() {
+				var authSrv = this;
+				var promises = [];
+				
+				var loadClient = function(client, version){
+					var deferred = $q.defer();
+					
+					return gapi.client.load(client, version, deferred.resolve());
 				}
 				
-				var q = $q.defer();
-				
-				$q.all(promises).then(function() {
-					return q.resolve(promises);
+				angular.forEach(authSrv.clientsToLoad, function(value){
+					promises.push(loadClient(value.client, value.version));
 				});
-				return q.promise;
+				
+				return $q.all(promises);
 			},
 			initGapiClient: function() {
 				var deferred = $q.defer();
 				var authSrv = this;
+				
 				gapi.client.init({
 				            apiKey: this.apiKey,
-				            discoveryDocs: this.documentApis,
+				            discoveryDocs: this.discoveryDocuments,
 				            clientId: this.clientId,
 				            scope: this.scopes
 				        }).then(function() {
-				        	console.log('Gapi init');
+				        	console.log('Gapi init', gapi);
+						
 							gapi.auth2.getAuthInstance().isSignedIn.listen(authSrv.updateSigninStatus());
 							authSrv.updateSigninStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
-							return deferred.resolve();
+							
+							//Loads clients based on discoveryDocuments						
+							authSrv.clientLoader().then(function() {
+								deferred.resolve();
+							});
+							
 				        });
 				return deferred.promise;
 			},
+			initiateGapi: function() {
+				var deferred = $q.defer();
+				var authSrv = this;
+				
+				loadGapi().then(function(){
+					authSrv.loadGapiApis().then(function(result) {
+						console.log(result);
+						authSrv.initGapiClient(result).then(function() {
+							$rootScope.$broadcast('gapiApi', {ready:true});
+							deferred.resolve();
+						});
+					});
+					
+				});
+				
+				return deferred.promise;
+			},
+			
+			//Google user management
+			
+
 			updateSigninStatus: function(isSignedIn) {
 				if (isSignedIn) {
 					$rootScope.$broadcast('gapiAuthService:signedIn', {userSignedIn:true});
@@ -96,21 +145,6 @@
 					$rootScope.$broadcast('gapiAuthService:signedIn', {userSignedIn:false});
 				}
 			},
-			initiateGapi: function() {
-				var deferred = $q.defer();
-				var authSrv = this;
-				
-				authSrv.observeGapiLoad().then(function() {
-					gapi.load('client:auth2');
-					authSrv.loadGapiApis().then(function(promises) {
-						authSrv.initGapiClient().then(function() {
-							return deferred.resolve();
-						});
-					});
-				});
-				return deferred.promise;
-			},
-			
 			login: function() {
 				var authSrv = this;
 				var deferred = $q.defer();
@@ -145,10 +179,12 @@
 			
 			connectFirebaseUsers: function() {
 				console.log("Checking Firebase");
+				
 				var authSrv = this;
 				
 				var isUserEqual = function (googleUser, firebaseUser) {
 				  if (firebaseUser) {
+					  console.log('isEqual', googleUser.getBasicProfile().getId());
 				    var providerData = firebaseUser.providerData;
 				    for (var i = 0; i < providerData.length; i++) {
 				      if (providerData[i].providerId === firebase.auth.GoogleAuthProvider.PROVIDER_ID &&
@@ -168,6 +204,7 @@
 				    // Check if we are already signed-in Firebase with the correct user.
 					var googleUser = {};
 					authSrv.getGoogleUser().then(function(googleUser){
+						console.log(googleUser.getAuthResponse());
 					    if (isUserEqual(googleUser, firebaseUser)) {
 					      // Build Firebase credential with the Google ID token.
 							var credential = '';
@@ -177,6 +214,7 @@
 									  deferred.resolve();
 							  });
 							});
+
 					    } else {
 							console.log('User already signed in with Firebase.');
 							deferred.resolve();
