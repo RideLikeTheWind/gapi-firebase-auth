@@ -28,6 +28,17 @@ angular.module('myApp').directive('googleAuthentication', ['$window', 'coreAuthS
 			});
 		}
 		
+		//If you want to get client API content, like calendars
+		$scope.$on('gapiApi', function(even, args){
+			if(args.ready == true){
+				gapi.client.request({
+					path: 'https://www.googleapis.com/calendar/v3/users/me/calendarList',
+					params: { maxResults:10 },
+				}).then(function(result) {
+					console.log(result);
+				})
+			}
+		
 	}];
 	
 	return {
