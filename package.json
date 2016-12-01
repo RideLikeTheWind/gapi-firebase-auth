@@ -1,6 +1,6 @@
 {
   "name": "gapi-firebase-auth",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A module for integrating GAPI and Firebase into your Angular projects",
   "main": "coreAuth.service.js",
   "scripts": {
