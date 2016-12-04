@@ -1,22 +1,22 @@
 (function() {
-		angular.module('myApp').service('coreAuthService', ['$window', '$q', '$rootScope', function($window, $q, $rootScope) {
-	
-		function loadGapi() {
-	        var deferred = $q.defer();
-	        $window.handleClientLoad = function(){
-	            gapi.load('client:auth2', deferred.resolve());
-	        }
-			return deferred.promise;
-		}
-	
+		angular.module('gapi-firebase-auth', []).service('coreAuthService', ['$window', '$q', '$rootScope', function($window, $q, $rootScope) {
 		return {
+			coreLoader: {},
 			clientsToLoad: [],
 			documentApis: [],
+			apiLoaded: false,
 			discoveryDocuments: [],
 			apiKey: '',
 			clientId: '',
 			scopes: 'profile email', //minimum scope
 			
+			isApiLoaded: function() {
+				//can watch this return function using 
+				//function() { coreAuthService.isApiLoaded(); }, function(oVal, nVal) { //doSomething });
+				//rather than waiting for broadcast
+					
+				return this.apiLoaded;
+			},
 			setDiscoveryDocuments: function(urlObject) {
 				this.discoveryDocuments = urlObject;
 				return true;
@@ -34,8 +34,15 @@
 				return true;
 			},
 			
-			//Loaders 
-			
+			loadGapi: function() {
+		        $window.handleClientLoad = function(){
+					var deferred = $q.defer();
+		            
+					this.coreLoader = gapi.load('client:auth2', deferred.resolve());
+					
+					return deferred.promise;
+		        }
+			},
 			loadGapiApis: function() {
 				
 				var authSrv = this;
@@ -117,27 +124,6 @@
 				        });
 				return deferred.promise;
 			},
-			initiateGapi: function() {
-				var deferred = $q.defer();
-				var authSrv = this;
-				
-				loadGapi().then(function(){
-					authSrv.loadGapiApis().then(function(result) {
-						console.log(result);
-						authSrv.initGapiClient(result).then(function() {
-							$rootScope.$broadcast('gapiApi', {ready:true});
-							deferred.resolve();
-						});
-					});
-					
-				});
-				
-				return deferred.promise;
-			},
-			
-			//Google user management
-			
-
 			updateSigninStatus: function(isSignedIn) {
 				if (isSignedIn) {
 					$rootScope.$broadcast('gapiAuthService:signedIn', {userSignedIn:true});
@@ -145,6 +131,27 @@
 					$rootScope.$broadcast('gapiAuthService:signedIn', {userSignedIn:false});
 				}
 			},
+			initiateGapi: function() {
+				var deferred = $q.defer();
+				var authSrv = this;
+				
+				authSrv.loadGapi(); // Start init of GAPI client and auth
+				
+				$q.all([authSrv.coreLoader, authSrv.loadGapiApis()]).then(function(result){
+					//Resolve and init client loader
+						authSrv.initGapiClient(result[1]).then(function() {
+							//	API loaded, can now broadcast Api ready or resolve promise if
+							// preferred course of usage
+							$rootScope.$broadcast('gapiApi', {ready:true});
+							//Set watchable variable
+							authSrv.apiLoaded = true;
+							deferred.resolve();
+						});
+				});
+				
+				return deferred.promise;
+			},
+			
 			login: function() {
 				var authSrv = this;
 				var deferred = $q.defer();
