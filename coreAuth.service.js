@@ -139,7 +139,7 @@
 				
 				$q.all([authSrv.coreLoader, authSrv.loadGapiApis()]).then(function(result){
 					//Resolve and init client loader
-						authSrv.initGapiClient(result[1]).then(function() {
+						authSrv.initGapiClient(result).then(function() {
 							//	API loaded, can now broadcast Api ready or resolve promise if
 							// preferred course of usage
 							$rootScope.$broadcast('gapiApi', {ready:true});
