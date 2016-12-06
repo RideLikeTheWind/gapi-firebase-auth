@@ -35,13 +35,11 @@
 			},
 			
 			loadGapi: function() {
+				var deferred = $q.defer();
 		        $window.handleClientLoad = function(){
-					var deferred = $q.defer();
-		            
 					this.coreLoader = gapi.load('client:auth2', deferred.resolve());
-					
-					return deferred.promise;
 		        }
+				return deferred.promise;
 			},
 			loadGapiApis: function() {
 				
@@ -50,13 +48,11 @@
 				
 				var loadDiscoveryDocument = function(documentUrl) {
 					var deferred = $q.defer();
-					
 					var data = '';
 					
 					if(!documentUrl) {
 						return deferred.resolve();
 					}
-					
 					var fetchDiscoveryDocument = fetch(documentUrl).then(
 				            function(resp){
 								if(!resp.ok){
@@ -135,10 +131,9 @@
 				var deferred = $q.defer();
 				var authSrv = this;
 				
-				authSrv.loadGapi(); // Start init of GAPI client and auth
-				
-				$q.all([authSrv.coreLoader, authSrv.loadGapiApis()]).then(function(result){
-					//Resolve and init client loader
+				authSrv.loadGapi().then(function() { // Start init of GAPI client and auth
+					$q.all([authSrv.coreLoader, authSrv.loadGapiApis()]).then(function(result){
+						//Resolve and init client loader
 						authSrv.initGapiClient(result).then(function() {
 							//	API loaded, can now broadcast Api ready or resolve promise if
 							// preferred course of usage
@@ -147,8 +142,8 @@
 							authSrv.apiLoaded = true;
 							deferred.resolve();
 						});
+					});
 				});
-				
 				return deferred.promise;
 			},
 			
